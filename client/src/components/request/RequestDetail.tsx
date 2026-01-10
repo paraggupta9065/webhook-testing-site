@@ -94,16 +94,16 @@ export function RequestDetail({ request }: RequestDetailProps) {
   const formattedDate = format(new Date(request.timestamp), "MMM d, yyyy HH:mm:ss");
 
   return (
-    <div className="h-full overflow-y-auto p-6 space-y-6">
+    <div className="h-full overflow-y-auto p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 pb-6 border-b border-border">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold font-display tracking-tight flex items-center gap-3">
+          <div className="space-y-1 w-full overflow-hidden">
+            <h1 className="text-lg md:text-2xl font-bold font-display tracking-tight flex flex-wrap items-center gap-2 md:gap-3">
               <span className={methodColors[request.method] || "text-foreground"}>{request.method}</span>
-              <span className="text-foreground">{request.path}</span>
+              <span className="text-foreground break-all">{request.path}</span>
             </h1>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground font-mono">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] md:text-sm text-muted-foreground font-mono">
               <span className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5" />
                 {formattedDate}
@@ -117,7 +117,7 @@ export function RequestDetail({ request }: RequestDetailProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Query Params */}
         <Section title="Query Parameters" icon={Globe} className={!request.query || Object.keys(request.query as object).length === 0 ? "opacity-60" : ""}>
           <KeyValueList data={request.query as Record<string, any>} />

@@ -5,9 +5,10 @@ import { useSocket } from "@/hooks/use-socket";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { RequestDetail } from "@/components/request/RequestDetail";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export default function Dashboard() {
   const [match, params] = useRoute("/:id");
@@ -18,13 +19,14 @@ export default function Dashboard() {
   const { connected } = useSocket(webhookId);
   
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Auto-select first request when data loads if nothing selected
   useEffect(() => {
     if (requests && requests.length > 0 && !selectedRequestId) {
       setSelectedRequestId(requests[0].id);
     }
-  }, [requests]);
+  }, [requests, selectedRequestId]);
 
   if (loadingWebhook) {
     return (
@@ -57,19 +59,41 @@ export default function Dashboard() {
     <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden font-sans">
       <Header webhook={webhook} />
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-80 md:w-96 flex-shrink-0 h-full">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Desktop Sidebar */}
+        <div className="hidden md:flex w-80 lg:w-96 flex-shrink-0 h-full">
           <Sidebar 
             requests={requests || []} 
             selectedId={selectedRequestId}
             onSelect={setSelectedRequestId}
-            className="h-full"
+            className="h-full w-full"
           />
         </div>
 
+        {/* Mobile Sidebar Trigger */}
+        <div className="md:hidden absolute bottom-6 left-6 z-50">
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button size="icon" className="rounded-full w-12 h-12 shadow-2xl">
+                <Menu className="w-6 h-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-80">
+              <Sidebar 
+                requests={requests || []} 
+                selectedId={selectedRequestId}
+                onSelect={(id) => {
+                  setSelectedRequestId(id);
+                  setIsMobileMenuOpen(false);
+                }}
+                className="h-full border-none"
+              />
+            </SheetContent>
+          </Sheet>
+        </div>
+
         {/* Main Content */}
-        <main className="flex-1 h-full bg-background relative">
+        <main className="flex-1 h-full bg-background relative overflow-hidden">
           <RequestDetail request={selectedRequest} />
           
           {/* Connection Status Indicator */}

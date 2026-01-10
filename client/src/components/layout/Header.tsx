@@ -36,13 +36,13 @@ export function Header({ webhook }: HeaderProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         {/* Webhook URL Input Group */}
-        <div className="hidden md:flex items-center bg-secondary/50 rounded-lg border border-border overflow-hidden">
-          <div className="px-3 py-1.5 text-xs text-muted-foreground border-r border-border font-medium">
-            Webhook URL
+        <div className="flex items-center bg-secondary/50 rounded-lg border border-border overflow-hidden">
+          <div className="hidden sm:block px-3 py-1.5 text-xs text-muted-foreground border-r border-border font-medium">
+            URL
           </div>
-          <div className="px-3 py-1.5 text-xs font-mono text-foreground max-w-[200px] truncate">
+          <div className="px-3 py-1.5 text-[10px] md:text-xs font-mono text-foreground max-w-[120px] md:max-w-[200px] truncate">
             {webhookUrl}
           </div>
           <button
@@ -55,11 +55,11 @@ export function Header({ webhook }: HeaderProps) {
         </div>
 
         {/* CLI Command Input Group */}
-        <div className="hidden lg:flex items-center bg-secondary/50 rounded-lg border border-border overflow-hidden group">
-          <div className="px-3 py-1.5 text-xs text-muted-foreground border-r border-border font-medium bg-secondary/80">
-            Tunnel CLI
+        <div className="hidden sm:flex items-center bg-secondary/50 rounded-lg border border-border overflow-hidden group">
+          <div className="hidden lg:block px-3 py-1.5 text-xs text-muted-foreground border-r border-border font-medium bg-secondary/80">
+            Tunnel
           </div>
-          <div className="px-3 py-1.5 text-xs font-mono text-primary max-w-[250px] truncate select-all">
+          <div className="px-3 py-1.5 text-[10px] md:text-xs font-mono text-primary max-w-[150px] md:max-w-[250px] truncate select-all">
             {cliCommand}
           </div>
           <button
@@ -71,7 +71,7 @@ export function Header({ webhook }: HeaderProps) {
           </button>
         </div>
 
-        <Button variant="outline" size="icon" className="ml-2 rounded-full border-border bg-secondary/30 hover:bg-secondary/80">
+        <Button variant="outline" size="icon" className="hidden xs:flex rounded-full border-border bg-secondary/30 hover:bg-secondary/80">
           <Share2 className="w-4 h-4 text-muted-foreground" />
         </Button>
       </div>
