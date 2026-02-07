@@ -9,6 +9,13 @@ export default function Home() {
   const { mutate, isPending } = useCreateWebhook();
 
   useEffect(() => {
+    // Debug environment variables
+    console.log('Environment check:', {
+      VITE_PUBLIC_POSTHOG_KEY: import.meta.env.VITE_PUBLIC_POSTHOG_KEY,
+      VITE_PUBLIC_POSTHOG_HOST: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+      allEnv: import.meta.env
+    });
+
     // Automatically create a webhook session on load
     mutate(undefined, {
       onSuccess: (webhook) => {
@@ -36,10 +43,10 @@ export default function Home() {
 
         <div className="space-y-4">
           <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-white">
-            HookTest
+            Test Webhook
           </h1>
           <p className="text-muted-foreground text-lg">
-            Instant webhook testing and tunneling for developers.
+            Powerful webhook testing and tunneling for developers. Hosted at <span className="underline">test-webhook.com</span>.
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
-import { useWebhook, useWebhookRequests } from "@/hooks/use-webhooks";
+import { useWebhook, useWebhookRequests, useClearWebhookHistory } from "@/hooks/use-webhooks";
 import { useSocket } from "@/hooks/use-socket";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -17,6 +17,7 @@ export default function Dashboard() {
   const { data: webhook, isLoading: loadingWebhook, error: webhookError } = useWebhook(webhookId || "");
   const { data: requests, isLoading: loadingRequests } = useWebhookRequests(webhookId || "");
   const { connected } = useSocket(webhookId);
+  const { mutate: clearHistory } = useClearWebhookHistory();
   
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -27,6 +28,13 @@ export default function Dashboard() {
       setSelectedRequestId(requests[0].id);
     }
   }, [requests, selectedRequestId]);
+
+  const handleClearHistory = () => {
+    if (webhookId && confirm("Are you sure you want to clear all request history? This cannot be undone.")) {
+      clearHistory(webhookId);
+      setSelectedRequestId(null);
+    }
+  };
 
   if (loadingWebhook) {
     return (
@@ -66,6 +74,7 @@ export default function Dashboard() {
             requests={requests || []} 
             selectedId={selectedRequestId}
             onSelect={setSelectedRequestId}
+            onClearHistory={handleClearHistory}
             className="h-full w-full"
           />
         </div>
@@ -86,6 +95,7 @@ export default function Dashboard() {
                   setSelectedRequestId(id);
                   setIsMobileMenuOpen(false);
                 }}
+                onClearHistory={handleClearHistory}
                 className="h-full border-none"
               />
             </SheetContent>

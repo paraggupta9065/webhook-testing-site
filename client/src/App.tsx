@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Dashboard from "@/pages/Dashboard";
+import { useEffect } from "react";
+import { posthog } from "./lib/posthog";
 
 function Router() {
   return (
@@ -18,6 +20,16 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    // Test PostHog
+    console.log('PostHog instance:', posthog);
+    console.log('PostHog __loaded:', posthog.__loaded);
+    if (posthog.__loaded) {
+      posthog.capture('app_loaded', { test: true });
+      console.log('PostHog test event captured');
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

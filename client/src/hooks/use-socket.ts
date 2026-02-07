@@ -3,6 +3,7 @@ import io, { Socket } from "socket.io-client";
 import { WS_EVENTS, type WebhookRequest } from "@shared/schema";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
+import { storeRequest } from "@/lib/localStorage";
 
 export function useSocket(webhookId: string | undefined) {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -31,6 +32,9 @@ export function useSocket(webhookId: string | undefined) {
     // Handle new requests in real-time
     socketInstance.on(WS_EVENTS.NEW_REQUEST, (newRequest: WebhookRequest) => {
       console.log("[WS] New Request received", newRequest);
+      
+      // Store in localStorage
+      storeRequest(webhookId, newRequest);
       
       // Optimistically update the query cache
       queryClient.setQueryData(

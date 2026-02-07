@@ -1,13 +1,15 @@
 import { cn } from "@/lib/utils";
 import { type WebhookRequest } from "@shared/schema";
 import { format } from "date-fns";
-import { Search, Inbox, Activity, Clock } from "lucide-react";
+import { Search, Inbox, Activity, Clock, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
   requests: WebhookRequest[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onClearHistory?: () => void;
   className?: string;
 }
 
@@ -32,14 +34,27 @@ const MethodBadge = ({ method }: { method: string }) => {
   );
 };
 
-export function Sidebar({ requests, selectedId, onSelect, className }: SidebarProps) {
+export function Sidebar({ requests, selectedId, onSelect, onClearHistory, className }: SidebarProps) {
   return (
     <div className={cn("flex flex-col h-full bg-secondary/30 border-r border-border", className)}>
       <div className="p-4 border-b border-border/50">
-        <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
-          <Inbox className="w-4 h-4" />
-          Request History
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <Inbox className="w-4 h-4" />
+            Request History
+          </h2>
+          {requests.length > 0 && onClearHistory && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClearHistory}
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="w-3 h-3 mr-1" />
+              Clear
+            </Button>
+          )}
+        </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input 

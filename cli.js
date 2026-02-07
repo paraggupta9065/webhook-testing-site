@@ -10,11 +10,7 @@ if (args.length < 2) {
 
 const webhookId = args[0];
 const localPort = args[1];
-// Default to the current replit url if not provided, or localhost for dev
-// In a real scenario, the user would provide the full URL or we'd hardcode the production URL
-// For this MVP, we'll assume the user might copy the command which includes the URL or we default to localhost:5000 if running locally?
-// Actually, the command in the dashboard should include the server URL. 
-// Let's assume the 3rd arg is the server URL, default to http://localhost:5000 for local testing.
+// The 3rd arg is the server URL, defaults to http://localhost:5000 for local testing.
 const serverUrl = args[2] || "http://localhost:5000";
 
 console.log(`Connecting to ${serverUrl} for webhook ${webhookId}...`);

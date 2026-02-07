@@ -46,6 +46,25 @@ export async function registerRoutes(
     res.json(requests);
   });
 
+  // Update webhook response configuration
+  app.patch("/api/webhooks/:id/response", async (req, res) => {
+    const { id } = req.params;
+    const { responseStatus, responseHeaders, responseBody } = req.body;
+
+    const webhook = await storage.getWebhook(id);
+    if (!webhook) {
+      return res.status(404).json({ message: "Webhook not found" });
+    }
+
+    const updated = await storage.updateWebhookResponse(id, {
+      responseStatus,
+      responseHeaders,
+      responseBody,
+    });
+
+    res.json(updated);
+  });
+
   // Ingestion Route
   // Route `ALL /webhook/:uuid`
   app.all("/webhook/:id", async (req, res) => {
@@ -74,7 +93,17 @@ export async function registerRoutes(
     // Emit to tunnel
     io.to(`tunnel:${webhookId}`).emit(WS_EVENTS.TUNNEL_REQUEST, savedRequest);
 
-    res.status(200).send("OK");
+    // Send configured response
+    const statusCode = parseInt(webhook.responseStatus || "200", 10);
+    const responseHeaders = webhook.responseHeaders as Record<string, string> || {};
+    const responseBody = webhook.responseBody || "OK";
+
+    // Set custom headers
+    Object.entries(responseHeaders).forEach(([key, value]) => {
+      res.setHeader(key, value);
+    });
+
+    res.status(statusCode).send(responseBody);
   });
 
   return httpServer;

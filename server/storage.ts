@@ -9,7 +9,8 @@ export interface IStorage {
   // HookTest methods
   createWebhook(name?: string): Promise<Webhook>;
   getWebhook(id: string): Promise<Webhook | undefined>;
-  createRequest(request: InsertRequest): Promise<WebhookRequest>;
+  updateWebhookResponse(id: string, response: { responseStatus?: string; responseHeaders?: any; responseBody?: string }): Promise<Webhook | undefined>;
+  createRequest(request: Omit<InsertRequest, 'id' | 'timestamp'>): Promise<WebhookRequest>;
   getRequests(webhookId: string): Promise<WebhookRequest[]>;
 }
 
@@ -47,6 +48,9 @@ export class MemStorage implements IStorage {
       id,
       name: name || null,
       createdAt: new Date(),
+      responseStatus: "200",
+      responseHeaders: null,
+      responseBody: null,
     };
     this.webhooks.set(id, webhook);
     this.requests.set(id, []);
@@ -57,7 +61,25 @@ export class MemStorage implements IStorage {
     return this.webhooks.get(id);
   }
 
-  async createRequest(insertRequest: InsertRequest): Promise<WebhookRequest> {
+  async updateWebhookResponse(
+    id: string,
+    response: { responseStatus?: string; responseHeaders?: any; responseBody?: string }
+  ): Promise<Webhook | undefined> {
+    const webhook = this.webhooks.get(id);
+    if (!webhook) return undefined;
+
+    const updated = {
+      ...webhook,
+      responseStatus: response.responseStatus ?? webhook.responseStatus,
+      responseHeaders: response.responseHeaders ?? webhook.responseHeaders,
+      responseBody: response.responseBody ?? webhook.responseBody,
+    };
+
+    this.webhooks.set(id, updated);
+    return updated;
+  }
+
+  async createRequest(insertRequest: Omit<InsertRequest, 'id' | 'timestamp'>): Promise<WebhookRequest> {
     const id = randomUUID();
     const request: WebhookRequest = {
       ...insertRequest,

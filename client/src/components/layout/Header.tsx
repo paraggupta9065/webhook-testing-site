@@ -3,6 +3,8 @@ import { Terminal, Copy, Share2, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { ResponseConfig } from "@/components/webhook/ResponseConfig";
+import { useUpdateWebhookResponse } from "@/hooks/use-webhooks";
 
 interface HeaderProps {
   webhook: Webhook;
@@ -11,14 +13,19 @@ interface HeaderProps {
 export function Header({ webhook }: HeaderProps) {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedCli, setCopiedCli] = useState(false);
+  const { mutate: updateResponse, isPending } = useUpdateWebhookResponse();
 
   const webhookUrl = `${window.location.origin}/webhook/${webhook.id}`;
-  const cliCommand = `npx hooktest-cli ${webhook.id} 3000`;
+  const cliCommand = `npx test-webhook-cli ${webhook.id} 3000`;
 
   const copyToClipboard = (text: string, setFn: (val: boolean) => void) => {
     navigator.clipboard.writeText(text);
     setFn(true);
     setTimeout(() => setFn(false), 2000);
+  };
+
+  const handleUpdateResponse = (config: { responseStatus: string; responseHeaders: Record<string, string>; responseBody: string }) => {
+    updateResponse({ webhookId: webhook.id, config });
   };
 
   return (
@@ -28,7 +35,7 @@ export function Header({ webhook }: HeaderProps) {
           <Terminal className="w-5 h-5" />
         </div>
         <div>
-          <h1 className="font-display font-bold text-lg leading-none tracking-tight">HookTest</h1>
+          <h1 className="font-display font-bold text-lg leading-none tracking-tight">Test Webhook</h1>
           <div className="text-[10px] text-muted-foreground font-mono mt-1 flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
             Live Tunnel Active
@@ -71,7 +78,13 @@ export function Header({ webhook }: HeaderProps) {
           </button>
         </div>
 
-        <Button variant="outline" size="icon" className="hidden xs:flex rounded-full border-border bg-secondary/30 hover:bg-secondary/80">
+        <ResponseConfig 
+          webhook={webhook} 
+          onUpdate={handleUpdateResponse}
+          isUpdating={isPending}
+        />
+
+        <Button variant="outline" size="icon" className="hidden xs:flex rounded-full border border-border bg-secondary/30 hover:bg-secondary/80">
           <Share2 className="w-4 h-4 text-muted-foreground" />
         </Button>
       </div>
