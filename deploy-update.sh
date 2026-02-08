@@ -12,7 +12,11 @@ echo "Installing/updating dependencies..."
 npm install
 
 echo "Running database migrations..."
-npm run db:push
+if [ ! -f "prod.db" ]; then
+  npm run db:push
+else
+  echo "Database already exists, skipping migration."
+fi
 
 echo "Building the application..."
 npm run build
