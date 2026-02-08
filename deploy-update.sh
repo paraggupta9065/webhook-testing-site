@@ -9,7 +9,7 @@ echo "Pulling latest changes from git..."
 git pull origin main  # Change 'main' to your default branch if different
 
 echo "Installing/updating dependencies..."
-npm install --production
+npm install
 
 echo "Running database migrations..."
 npm run db:push
