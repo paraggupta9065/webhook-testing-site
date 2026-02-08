@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 
 interface ResponseConfigProps {
   webhook: Webhook;
-  onUpdate: (config: { responseStatus: string; responseHeaders: Record<string, string>; responseBody: string }) => void;
+  onUpdate: (config: { responseStatus: string | number; responseHeaders: Record<string, string>; responseBody: string }) => void;
   isUpdating?: boolean;
 }
 

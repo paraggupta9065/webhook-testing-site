@@ -95,7 +95,7 @@ export function Sidebar({ requests, selectedId, onSelect, onClearHistory, classN
                   <MethodBadge method={req.method} />
                   <span className="text-xs text-muted-foreground flex items-center gap-1 font-mono">
                     <Clock className="w-3 h-3" />
-                    {format(new Date(req.timestamp), "HH:mm:ss")}
+                    {format(new Date(req.timestamp || Date.now()), "HH:mm:ss")}
                   </span>
                 </div>
                 

@@ -15,7 +15,7 @@ export function Header({ webhook }: HeaderProps) {
   const [copiedCli, setCopiedCli] = useState(false);
   const { mutate: updateResponse, isPending } = useUpdateWebhookResponse();
 
-  const webhookUrl = `${window.location.origin}/webhook/${webhook.id}`;
+  const webhookUrl = `${window.location.origin}/webhook/${webhook.uniqueSlug}`;
   const cliCommand = `npx test-webhook-cli ${webhook.id} 3000`;
 
   const copyToClipboard = (text: string, setFn: (val: boolean) => void) => {
@@ -24,8 +24,8 @@ export function Header({ webhook }: HeaderProps) {
     setTimeout(() => setFn(false), 2000);
   };
 
-  const handleUpdateResponse = (config: { responseStatus: string; responseHeaders: Record<string, string>; responseBody: string }) => {
-    updateResponse({ webhookId: webhook.id, config });
+  const handleUpdateResponse = (config: { responseStatus: string | number; responseHeaders: Record<string, string>; responseBody: string }) => {
+    updateResponse({ webhookId: webhook.id, config: { ...config, responseStatus: String(config.responseStatus) } });
   };
 
   return (
@@ -35,7 +35,7 @@ export function Header({ webhook }: HeaderProps) {
           <Terminal className="w-5 h-5" />
         </div>
         <div>
-          <h1 className="font-display font-bold text-lg leading-none tracking-tight">Test Webhook</h1>
+          <h1 className="font-display font-bold text-lg leading-none tracking-tight">test-webhook.com</h1>
           <div className="text-[10px] text-muted-foreground font-mono mt-1 flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
             Live Tunnel Active
@@ -62,7 +62,7 @@ export function Header({ webhook }: HeaderProps) {
         </div>
 
         {/* CLI Command Input Group */}
-        <div className="hidden sm:flex items-center bg-secondary/50 rounded-lg border border-border overflow-hidden group">
+        {/* <div className="hidden sm:flex items-center bg-secondary/50 rounded-lg border border-border overflow-hidden group">
           <div className="hidden lg:block px-3 py-1.5 text-xs text-muted-foreground border-r border-border font-medium bg-secondary/80">
             Tunnel
           </div>
@@ -76,7 +76,7 @@ export function Header({ webhook }: HeaderProps) {
           >
             <Copy className={cn("w-3.5 h-3.5", copiedCli ? "text-green-400" : "text-muted-foreground")} />
           </button>
-        </div>
+        </div> */}
 
         <ResponseConfig 
           webhook={webhook} 

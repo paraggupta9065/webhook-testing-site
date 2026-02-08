@@ -91,7 +91,12 @@ export function RequestDetail({ request }: RequestDetailProps) {
     PATCH: "text-yellow-400",
   };
 
-  const formattedDate = format(new Date(request.timestamp), "MMM d, yyyy HH:mm:ss");
+  const formattedDate = format(new Date(request.timestamp || Date.now()), "MMM d, yyyy HH:mm:ss");
+
+  // Parse JSON fields
+  const queryParams = request.queryParams ? JSON.parse(request.queryParams) : {};
+  const headers = typeof request.headers === 'string' ? JSON.parse(request.headers) : request.headers;
+  const body = request.body ? (typeof request.body === 'string' ? JSON.parse(request.body) : request.body) : null;
 
   return (
     <div className="h-full overflow-y-auto p-4 md:p-6 space-y-6">
@@ -119,24 +124,24 @@ export function RequestDetail({ request }: RequestDetailProps) {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Query Params */}
-        <Section title="Query Parameters" icon={Globe} className={!request.query || Object.keys(request.query as object).length === 0 ? "opacity-60" : ""}>
-          <KeyValueList data={request.query as Record<string, any>} />
+        <Section title="Query Parameters" icon={Globe} className={!queryParams || Object.keys(queryParams).length === 0 ? "opacity-60" : ""}>
+          <KeyValueList data={queryParams} />
         </Section>
 
         {/* Headers */}
         <Section title="Headers" icon={Code}>
           <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
-            <KeyValueList data={request.headers as Record<string, any>} />
+            <KeyValueList data={headers} />
           </div>
         </Section>
       </div>
 
       {/* Body Payload */}
       <Section title="Request Body" icon={FileJson} className="min-h-[300px] flex flex-col">
-        {request.body && Object.keys(request.body as object).length > 0 ? (
+        {body && Object.keys(body).length > 0 ? (
           <div className="relative group flex-1">
             <div className="absolute right-4 top-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-              <CopyButton text={JSON.stringify(request.body, null, 2)} />
+              <CopyButton text={JSON.stringify(body, null, 2)} />
             </div>
             <SyntaxHighlighter 
               language="json" 
@@ -150,7 +155,7 @@ export function RequestDetail({ request }: RequestDetailProps) {
                 height: '100%'
               }}
             >
-              {JSON.stringify(request.body, null, 2)}
+              {JSON.stringify(body, null, 2)}
             </SyntaxHighlighter>
           </div>
         ) : (

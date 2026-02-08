@@ -5,6 +5,9 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { WS_EVENTS } from "@shared/schema";
 import { z } from "zod";
+import { authenticate, optionalAuth, type AuthRequest } from "./auth";
+import { dynamicRateLimit, anonymousRateLimit } from "./rateLimit";
+import { registerAuthRoutes } from "./authRoutes";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -18,92 +21,212 @@ export async function registerRoutes(
   });
 
   io.on("connection", (socket) => {
-    socket.on(WS_EVENTS.JOIN_DASHBOARD, (webhookId) => {
-      socket.join(`dashboard:${webhookId}`);
+    socket.on(WS_EVENTS.JOIN_DASHBOARD, (endpointId) => {
+      socket.join(`dashboard:${endpointId}`);
     });
 
-    socket.on(WS_EVENTS.REGISTER_TUNNEL, (webhookId) => {
-      socket.join(`tunnel:${webhookId}`);
+    socket.on(WS_EVENTS.REGISTER_TUNNEL, (endpointId) => {
+      socket.join(`tunnel:${endpointId}`);
     });
   });
 
-  // API Routes
-  app.post(api.webhooks.create.path, async (req, res) => {
-    const webhook = await storage.createWebhook();
-    res.status(201).json(webhook);
+  // Register authentication routes
+  registerAuthRoutes(app);
+
+  // API Routes - Endpoints Management
+  // Create endpoint (optional auth - can be anonymous or authenticated)
+  app.post(api.webhooks.create.path, optionalAuth, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      const endpoint = await storage.createEndpoint({
+        ...req.body,
+        userId,
+      });
+      res.status(201).json(endpoint);
+    } catch (error) {
+      console.error("Error creating endpoint:", error);
+      res.status(500).json({ message: "Failed to create endpoint" });
+    }
+  });
+
+  // List user's endpoints (authenticated)
+  app.get("/api/endpoints", authenticate, async (req: AuthRequest, res) => {
+    try {
+      // TODO: Implement list user endpoints in storage
+      res.json([]);
+    } catch (error) {
+      console.error("Error listing endpoints:", error);
+      res.status(500).json({ message: "Failed to list endpoints" });
+    }
   });
 
   app.get(api.webhooks.get.path, async (req, res) => {
-    const webhook = await storage.getWebhook(req.params.id);
-    if (!webhook) {
-      return res.status(404).json({ message: "Webhook not found" });
+    try {
+      const endpoint = await storage.getEndpoint(req.params.id);
+      if (!endpoint) {
+        return res.status(404).json({ message: "Endpoint not found" });
+      }
+      res.json(endpoint);
+    } catch (error) {
+      console.error("Error fetching endpoint:", error);
+      res.status(500).json({ message: "Failed to fetch endpoint" });
     }
-    res.json(webhook);
   });
 
   app.get(api.webhooks.listRequests.path, async (req, res) => {
-    const requests = await storage.getRequests(req.params.id);
-    res.json(requests);
+    try {
+      const requests = await storage.getRequests(req.params.id);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching requests:", error);
+      res.status(500).json({ message: "Failed to fetch requests" });
+    }
   });
 
-  // Update webhook response configuration
+  // Update endpoint (authenticated, owner only)
+  app.patch("/api/endpoints/:id", authenticate, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const endpoint = await storage.getEndpoint(id);
+      
+      if (!endpoint) {
+        return res.status(404).json({ message: "Endpoint not found" });
+      }
+
+      // Check ownership
+      if (endpoint.userId && endpoint.userId !== req.user?.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // TODO: Implement full endpoint update
+      res.json({ message: "Endpoint update not fully implemented" });
+    } catch (error) {
+      console.error("Error updating endpoint:", error);
+      res.status(500).json({ message: "Failed to update endpoint" });
+    }
+  });
+
+  // Delete endpoint (authenticated, owner only)
+  app.delete("/api/endpoints/:id", authenticate, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const endpoint = await storage.getEndpoint(id);
+      
+      if (!endpoint) {
+        return res.status(404).json({ message: "Endpoint not found" });
+      }
+
+      // Check ownership
+      if (endpoint.userId && endpoint.userId !== req.user?.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // TODO: Implement endpoint deletion
+      res.json({ message: "Endpoint deletion not fully implemented" });
+    } catch (error) {
+      console.error("Error deleting endpoint:", error);
+      res.status(500).json({ message: "Failed to delete endpoint" });
+    }
+  });
+
+  // Update endpoint response configuration
   app.patch("/api/webhooks/:id/response", async (req, res) => {
-    const { id } = req.params;
-    const { responseStatus, responseHeaders, responseBody } = req.body;
+    try {
+      const { id } = req.params;
+      const { responseStatus, responseHeaders, responseBody } = req.body;
 
-    const webhook = await storage.getWebhook(id);
-    if (!webhook) {
-      return res.status(404).json({ message: "Webhook not found" });
+      const endpoint = await storage.getEndpoint(id);
+      if (!endpoint) {
+        return res.status(404).json({ message: "Endpoint not found" });
+      }
+
+      const updated = await storage.updateEndpointResponse(id, {
+        responseStatus: responseStatus ? parseInt(responseStatus, 10) : undefined,
+        responseHeaders,
+        responseBody,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating endpoint response:", error);
+      res.status(500).json({ message: "Failed to update endpoint response" });
     }
-
-    const updated = await storage.updateWebhookResponse(id, {
-      responseStatus,
-      responseHeaders,
-      responseBody,
-    });
-
-    res.json(updated);
   });
 
-  // Ingestion Route
-  // Route `ALL /webhook/:uuid`
-  app.all("/webhook/:id", async (req, res) => {
-    const webhookId = req.params.id;
-    const webhook = await storage.getWebhook(webhookId);
+  // Clear endpoint history
+  app.delete("/api/webhooks/:id/requests", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const endpoint = await storage.getEndpoint(id);
+      
+      if (!endpoint) {
+        return res.status(404).json({ message: "Endpoint not found" });
+      }
 
-    if (!webhook) {
-      return res.status(404).send("Webhook not found");
+      await storage.deleteRequests(id);
+      res.json({ message: "History cleared" });
+    } catch (error) {
+      console.error("Error clearing history:", error);
+      res.status(500).json({ message: "Failed to clear history" });
     }
+  });
 
-    // Capture request details
-    const requestData = {
-      webhookId,
-      method: req.method,
-      path: req.originalUrl, // or req.path, but originalUrl includes query if we want
-      headers: req.headers as Record<string, any>,
-      body: req.body,
-      query: req.query as Record<string, any>,
-    };
+  // Webhook Ingestion Route with rate limiting
+  // Route `ALL /webhook/:slug` - Changed from :id to :slug for URL slug
+  app.all("/webhook/:slug", anonymousRateLimit, async (req, res) => {
+    const startTime = Date.now();
+    const slug = req.params.slug;
+    
+    try {
+      const endpoint = await storage.getEndpointBySlug(slug);
 
-    const savedRequest = await storage.createRequest(requestData);
+      if (!endpoint || !endpoint.isActive) {
+        return res.status(404).send("Endpoint not found or inactive");
+      }
 
-    // Emit to dashboard
-    io.to(`dashboard:${webhookId}`).emit(WS_EVENTS.NEW_REQUEST, savedRequest);
+      // Capture request details
+      const requestData = {
+        endpointId: endpoint.id,
+        method: req.method,
+        path: req.originalUrl,
+        headers: JSON.stringify(req.headers),
+        body: req.body ? JSON.stringify(req.body) : null,
+        queryParams: JSON.stringify(req.query),
+        contentType: req.get("content-type") || null,
+        ipAddress: req.ip || null,
+        userAgent: req.get("user-agent") || null,
+        bodySize: req.body ? JSON.stringify(req.body).length : 0,
+        processingTimeMs: null, // Will be set after processing
+      };
 
-    // Emit to tunnel
-    io.to(`tunnel:${webhookId}`).emit(WS_EVENTS.TUNNEL_REQUEST, savedRequest);
+      const savedRequest = await storage.createRequest(requestData);
+      
+      // Update processing time
+      savedRequest.processingTimeMs = Date.now() - startTime;
 
-    // Send configured response
-    const statusCode = parseInt(webhook.responseStatus || "200", 10);
-    const responseHeaders = webhook.responseHeaders as Record<string, string> || {};
-    const responseBody = webhook.responseBody || "OK";
+      // Emit to dashboard
+      io.to(`dashboard:${endpoint.id}`).emit(WS_EVENTS.NEW_REQUEST, savedRequest);
 
-    // Set custom headers
-    Object.entries(responseHeaders).forEach(([key, value]) => {
-      res.setHeader(key, value);
-    });
+      // Emit to tunnel
+      io.to(`tunnel:${endpoint.id}`).emit(WS_EVENTS.TUNNEL_REQUEST, savedRequest);
 
-    res.status(statusCode).send(responseBody);
+      // Send configured response
+      const statusCode = endpoint.responseStatus || 200;
+      const responseHeaders = endpoint.responseHeaders 
+        ? JSON.parse(endpoint.responseHeaders) 
+        : {};
+      const responseBody = endpoint.responseBody || "OK";
+
+      // Set custom headers
+      Object.entries(responseHeaders).forEach(([key, value]) => {
+        res.setHeader(key, value as string);
+      });
+
+      res.status(statusCode).send(responseBody);
+    } catch (error) {
+      console.error("Error processing webhook:", error);
+      res.status(500).send("Internal server error");
+    }
   });
 
   return httpServer;

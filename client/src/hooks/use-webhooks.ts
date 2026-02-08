@@ -66,7 +66,11 @@ export function useWebhookRequests(webhookId: string) {
       });
       
       // Sort by timestamp (newest first)
-      merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      merged.sort((a, b) => {
+        const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return bTime - aTime;
+      });
       
       return merged;
     },

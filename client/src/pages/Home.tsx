@@ -43,7 +43,7 @@ export default function Home() {
 
         <div className="space-y-4">
           <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-white">
-            Test Webhook
+            test-webhook.com
           </h1>
           <p className="text-muted-foreground text-lg">
             Powerful webhook testing and tunneling for developers. Hosted at <span className="underline">test-webhook.com</span>.

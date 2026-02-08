@@ -1,102 +1,143 @@
-import { users, type User, type InsertUser, type Webhook, type WebhookRequest, type InsertWebhook, type InsertRequest } from "@shared/schema";
+import { db } from "./db";
+import { users, endpoints, requests, type User, type InsertUser, type Endpoint, type Request, type InsertEndpoint, type InsertRequest } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 
-  // HookTest methods
-  createWebhook(name?: string): Promise<Webhook>;
-  getWebhook(id: string): Promise<Webhook | undefined>;
-  updateWebhookResponse(id: string, response: { responseStatus?: string; responseHeaders?: any; responseBody?: string }): Promise<Webhook | undefined>;
-  createRequest(request: Omit<InsertRequest, 'id' | 'timestamp'>): Promise<WebhookRequest>;
-  getRequests(webhookId: string): Promise<WebhookRequest[]>;
+  // Endpoint methods
+  createEndpoint(endpoint?: Partial<InsertEndpoint>): Promise<Endpoint>;
+  getEndpoint(id: string): Promise<Endpoint | undefined>;
+  getEndpointBySlug(slug: string): Promise<Endpoint | undefined>;
+  updateEndpointResponse(id: string, response: { responseStatus?: number; responseHeaders?: any; responseBody?: string }): Promise<Endpoint | undefined>;
+  createRequest(request: Omit<InsertRequest, 'id' | 'timestamp'>): Promise<Request>;
+  getRequests(endpointId: string): Promise<Request[]>;
+  deleteRequests(endpointId: string): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private webhooks: Map<string, Webhook>;
-  private requests: Map<string, WebhookRequest[]>;
-
-  constructor() {
-    this.users = new Map();
-    this.webhooks = new Map();
-    this.requests = new Map();
-  }
-
+export class DbStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const now = new Date();
+    const user: User = { 
+      id,
+      email: insertUser.email,
+      username: insertUser.username || null,
+      passwordHash: insertUser.passwordHash || null,
+      name: insertUser.name || null,
+      plan: insertUser.plan || "free",
+      createdAt: now,
+      updatedAt: now,
+    };
+    await db.insert(users).values(user);
     return user;
   }
 
-  async createWebhook(name?: string): Promise<Webhook> {
+  async createEndpoint(endpoint?: Partial<InsertEndpoint>): Promise<Endpoint> {
     const id = randomUUID();
-    const webhook: Webhook = {
+    const uniqueSlug = randomUUID().split('-')[0]; // Use first segment as slug
+    const now = new Date();
+    
+    const newEndpoint: Endpoint = {
       id,
-      name: name || null,
-      createdAt: new Date(),
-      responseStatus: "200",
-      responseHeaders: null,
-      responseBody: null,
+      userId: endpoint?.userId || null,
+      uniqueSlug,
+      name: endpoint?.name || null,
+      description: endpoint?.description || null,
+      customDomain: endpoint?.customDomain || null,
+      expiresAt: endpoint?.expiresAt || null,
+      maxRequests: endpoint?.maxRequests || 100,
+      responseStatus: endpoint?.responseStatus || 200,
+      responseHeaders: endpoint?.responseHeaders ? JSON.stringify(endpoint.responseHeaders) : null,
+      responseBody: endpoint?.responseBody || null,
+      forwardUrl: endpoint?.forwardUrl || null,
+      isActive: endpoint?.isActive !== undefined ? endpoint.isActive : true,
+      createdAt: now,
+      updatedAt: now,
     };
-    this.webhooks.set(id, webhook);
-    this.requests.set(id, []);
-    return webhook;
+    
+    await db.insert(endpoints).values(newEndpoint);
+    return newEndpoint;
   }
 
-  async getWebhook(id: string): Promise<Webhook | undefined> {
-    return this.webhooks.get(id);
+  async getEndpoint(id: string): Promise<Endpoint | undefined> {
+    const result = await db.select().from(endpoints).where(eq(endpoints.id, id)).limit(1);
+    return result[0];
   }
 
-  async updateWebhookResponse(
+  async getEndpointBySlug(slug: string): Promise<Endpoint | undefined> {
+    const result = await db.select().from(endpoints).where(eq(endpoints.uniqueSlug, slug)).limit(1);
+    return result[0];
+  }
+
+  async updateEndpointResponse(
     id: string,
-    response: { responseStatus?: string; responseHeaders?: any; responseBody?: string }
-  ): Promise<Webhook | undefined> {
-    const webhook = this.webhooks.get(id);
-    if (!webhook) return undefined;
+    response: { responseStatus?: number; responseHeaders?: any; responseBody?: string }
+  ): Promise<Endpoint | undefined> {
+    const endpoint = await this.getEndpoint(id);
+    if (!endpoint) return undefined;
 
-    const updated = {
-      ...webhook,
-      responseStatus: response.responseStatus ?? webhook.responseStatus,
-      responseHeaders: response.responseHeaders ?? webhook.responseHeaders,
-      responseBody: response.responseBody ?? webhook.responseBody,
+    const updates: Partial<Endpoint> = {
+      updatedAt: new Date(),
     };
+    
+    if (response.responseStatus !== undefined) updates.responseStatus = response.responseStatus;
+    if (response.responseHeaders !== undefined) updates.responseHeaders = JSON.stringify(response.responseHeaders);
+    if (response.responseBody !== undefined) updates.responseBody = response.responseBody;
 
-    this.webhooks.set(id, updated);
-    return updated;
+    await db.update(endpoints).set(updates).where(eq(endpoints.id, id));
+    
+    return { ...endpoint, ...updates };
   }
 
-  async createRequest(insertRequest: Omit<InsertRequest, 'id' | 'timestamp'>): Promise<WebhookRequest> {
+  async createRequest(insertRequest: Omit<InsertRequest, 'id' | 'timestamp'>): Promise<Request> {
     const id = randomUUID();
-    const request: WebhookRequest = {
-      ...insertRequest,
+    const now = new Date();
+    
+    const request: Request = {
       id,
-      timestamp: new Date(),
+      endpointId: insertRequest.endpointId,
+      method: insertRequest.method,
+      path: insertRequest.path || null,
+      timestamp: now,
+      queryParams: insertRequest.queryParams ? JSON.stringify(insertRequest.queryParams) : null,
+      headers: typeof insertRequest.headers === 'string' ? insertRequest.headers : JSON.stringify(insertRequest.headers),
+      body: insertRequest.body || null,
+      bodySize: insertRequest.bodySize || null,
+      contentType: insertRequest.contentType || null,
+      ipAddress: insertRequest.ipAddress || null,
+      userAgent: insertRequest.userAgent || null,
+      processingTimeMs: insertRequest.processingTimeMs || null,
     };
-    const webhookRequests = this.requests.get(request.webhookId) || [];
-    // Store latest first or last? Usually push and reverse on read, or unshift.
-    // Let's unshift to keep newest at 0, or push and sort.
-    webhookRequests.unshift(request);
-    this.requests.set(request.webhookId, webhookRequests);
+    
+    await db.insert(requests).values(request);
     return request;
   }
 
-  async getRequests(webhookId: string): Promise<WebhookRequest[]> {
-    return this.requests.get(webhookId) || [];
+  async getRequests(endpointId: string): Promise<Request[]> {
+    return await db.select()
+      .from(requests)
+      .where(eq(requests.endpointId, endpointId))
+      .orderBy(desc(requests.timestamp))
+      .limit(100);
+  }
+
+  async deleteRequests(endpointId: string): Promise<void> {
+    await db.delete(requests).where(eq(requests.endpointId, endpointId));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DbStorage();
